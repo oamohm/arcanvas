@@ -1,9 +1,7 @@
-export default function Home() {
-      return (
-          <div>
-                <h1>CanvasArc Terminal</h1>
-                    </div>
-                      );
-                      }
-                      
+export default function Page() {
+  return (
+    <div>
+      <h1>hello world</h1>
+    </div>
+  )
 }
