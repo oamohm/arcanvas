@@ -1,47 +1,40 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 
 export default function ArcCanvas() {
-  const [session, setSession] = useState({ email: null, wallet: null })
-  const [stream, setStream] = useState(['System Ready', 'Waiting for Auth...'])
+  // state प्रबंधन - यहाँ से आपके सारे फीचर्स कंट्रोल होंगे
+  const [session, setSession] = useState({ email: null, wallet: null, status: 'ready' })
+  const [stream, setStream] = useState(['Arc Engine: Initialized', 'Waiting for User Input...'])
 
-  const handleAuth = (e) => {
-    e.preventDefault();
-    const email = e.target.email.value;
-    setSession({...session, email});
-    setStream(prev => [...prev, `Authenticated: ${email}`]);
+  // वॉलेट कनेक्टिविटी लॉजिक
+  const connectWallet = () => {
+    setSession({ ...session, wallet: '0x...Connected' })
+    setStream([...stream, 'Wallet Address Verified', 'Deterministic Path Active'])
   }
 
   return (
-    <main style={{ backgroundColor: '#000', color: '#fff', minHeight: '100vh', padding: '2rem', fontFamily: 'monospace' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '2rem', borderBottom: '1px solid #333' }}>
-        <h1>ARCCANVAS // ENGINE</h1>
-        <button onClick={() => setSession({...session, wallet: '0x88...Af2'})} style={{ padding: '0.5rem 1rem' }}>
-          {session.wallet ? `Wallet: ${session.wallet}` : 'Connect Wallet'}
+    <main style={{ minHeight: '100vh', background: '#0a0a0a', color: '#ededed', padding: '40px', fontFamily: 'monospace' }}>
+      <header style={{ borderBottom: '1px solid #333', paddingBottom: '20px', display: 'flex', justifyContent: 'space-between' }}>
+        <h1 style={{ margin: 0 }}>ARCCANVAS // BUILDER</h1>
+        <button onClick={connectWallet} style={{ background: '#fff', border: 'none', padding: '10px 20px', cursor: 'pointer' }}>
+          {session.wallet ? session.wallet : 'Connect Wallet'}
         </button>
       </header>
 
-      <section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginTop: '2rem' }}>
-        <div style={{ border: '1px solid #444', padding: '2rem', borderRadius: '8px' }}>
-          {!session.email ? (
-            <form onSubmit={handleAuth}>
-              <h3>Email Authentication</h3>
-              <input name="email" type="email" placeholder="enter email" required style={{ width: '100%', padding: '0.5rem', marginBottom: '1rem' }} />
-              <button type="submit" style={{ width: '100%' }}>Login</button>
-            </form>
-          ) : (
-            <div>
-              <h3>USDC Settlement Layer</h3>
-              <input type="number" placeholder="amount" style={{ width: '100%', padding: '0.5rem', marginBottom: '1rem' }} />
-              <button style={{ width: '100%' }}>Execute Deterministic Transfer</button>
-            </div>
-          )}
+      <section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px', marginTop: '40px' }}>
+        {/* ऑथेंटिकेशन और सेटलमेंट */}
+        <div style={{ border: '1px solid #333', padding: '30px', borderRadius: '8px' }}>
+          <h2>Settlement Layer</h2>
+          <input type="email" placeholder="Verification Email" style={{ width: '100%', padding: '10px', background: '#111', color: '#fff', border: '1px solid #444', marginBottom: '15px' }} />
+          <input type="number" placeholder="USDC Amount" style={{ width: '100%', padding: '10px', background: '#111', color: '#fff', border: '1px solid #444', marginBottom: '15px' }} />
+          <button style={{ width: '100%', padding: '12px', background: '#2563eb', color: '#fff', border: 'none', fontWeight: 'bold' }}>Execute Transaction</button>
         </div>
 
-        <div style={{ border: '1px solid #444', padding: '2rem', borderRadius: '8px' }}>
-          <h3>Deterministic Stream Feed</h3>
-          <div style={{ height: '200px', overflowY: 'auto', background: '#111', padding: '1rem', color: '#0f0' }}>
-            {stream.map((s, i) => <p key={i}>{`> ${s}`}</p>)}
+        {/* लाइव स्ट्रीमिंग फीड */}
+        <div style={{ border: '1px solid #333', padding: '30px', borderRadius: '8px' }}>
+          <h2>Deterministic Stream</h2>
+          <div style={{ background: '#000', height: '200px', padding: '15px', color: '#0f0', overflowY: 'auto' }}>
+            {stream.map((line, i) => <p key={i}>{'> '}{line}</p>)}
           </div>
         </div>
       </section>
