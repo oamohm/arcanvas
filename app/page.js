@@ -174,7 +174,9 @@ export default function ArcCanvas() {
                   border: 'none', 
                   padding: '10px 20px', 
                   cursor: session.transactionInProgress ? 'not-allowed' : 'pointer',
-                  opacity: session.transactionInProgress ? 0.5 : 1
+                  opacity: session.transactionInProgress ? 0.5 : 1,
+                  color: '#fff',
+                  borderRadius: '4px'
                 }}
               >
                 Disconnect
@@ -192,7 +194,10 @@ export default function ArcCanvas() {
                 border: 'none', 
                 padding: '10px 20px', 
                 cursor: session.isConnecting ? 'not-allowed' : 'pointer',
-                opacity: session.isConnecting ? 0.5 : 1
+                opacity: session.isConnecting ? 0.5 : 1,
+                color: '#000',
+                borderRadius: '4px',
+                fontWeight: 'bold'
               }}
             >
               {session.isConnecting ? 'Connecting...' : 'Connect Wallet'}
@@ -218,40 +223,58 @@ export default function ArcCanvas() {
         {/* Settlement Layer */}
         <div style={{ border: '1px solid #333', padding: '30px', borderRadius: '8px' }}>
           <h2>Settlement Layer</h2>
-          <input 
-            type="email" 
-            placeholder="Verification Email" 
-            value={formData.email}
-            onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-            disabled={!session.wallet || session.transactionInProgress}
-            style={{ 
-              width: '100%', 
-              padding: '10px', 
-              background: '#111', 
-              color: '#fff', 
-              border: '1px solid #444', 
-              marginBottom: '15px',
-              opacity: !session.wallet || session.transactionInProgress ? 0.5 : 1,
-              cursor: !session.wallet || session.transactionInProgress ? 'not-allowed' : 'text'
-            }} 
-          />
-          <input 
-            type="number" 
-            placeholder="USDC Amount" 
-            value={formData.amount}
-            onChange={(e) => setFormData(prev => ({ ...prev, amount: e.target.value }))}
-            disabled={!session.wallet || session.transactionInProgress}
-            style={{ 
-              width: '100%', 
-              padding: '10px', 
-              background: '#111', 
-              color: '#fff', 
-              border: '1px solid #444', 
-              marginBottom: '15px',
-              opacity: !session.wallet || session.transactionInProgress ? 0.5 : 1,
-              cursor: !session.wallet || session.transactionInProgress ? 'not-allowed' : 'text'
-            }} 
-          />
+          <p style={{ fontSize: '12px', color: '#888', marginBottom: '20px' }}>
+            Execute deterministic settlements with wallet verification and transaction tracking.
+          </p>
+          
+          <div style={{ marginBottom: '15px' }}>
+            <label style={{ display: 'block', fontSize: '12px', color: '#aaa', marginBottom: '5px' }}>
+              Verification Email
+            </label>
+            <input 
+              type="email" 
+              placeholder="your@email.com" 
+              value={formData.email}
+              onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+              disabled={!session.wallet || session.transactionInProgress}
+              style={{ 
+                width: '100%', 
+                padding: '10px', 
+                background: '#111', 
+                color: '#fff', 
+                border: '1px solid #444', 
+                marginBottom: '0px',
+                borderRadius: '4px',
+                opacity: !session.wallet || session.transactionInProgress ? 0.5 : 1,
+                cursor: !session.wallet || session.transactionInProgress ? 'not-allowed' : 'text'
+              }} 
+            />
+          </div>
+
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', fontSize: '12px', color: '#aaa', marginBottom: '5px' }}>
+              USDC Amount
+            </label>
+            <input 
+              type="number" 
+              placeholder="Enter amount" 
+              value={formData.amount}
+              onChange={(e) => setFormData(prev => ({ ...prev, amount: e.target.value }))}
+              disabled={!session.wallet || session.transactionInProgress}
+              style={{ 
+                width: '100%', 
+                padding: '10px', 
+                background: '#111', 
+                color: '#fff', 
+                border: '1px solid #444', 
+                marginBottom: '0px',
+                borderRadius: '4px',
+                opacity: !session.wallet || session.transactionInProgress ? 0.5 : 1,
+                cursor: !session.wallet || session.transactionInProgress ? 'not-allowed' : 'text'
+              }} 
+            />
+          </div>
+
           <button 
             onClick={executeTransaction}
             disabled={!session.wallet || session.transactionInProgress}
@@ -263,11 +286,13 @@ export default function ArcCanvas() {
               border: 'none', 
               fontWeight: 'bold',
               cursor: session.wallet && !session.transactionInProgress ? 'pointer' : 'not-allowed',
-              opacity: session.wallet && !session.transactionInProgress ? 1 : 0.5
+              opacity: session.wallet && !session.transactionInProgress ? 1 : 0.5,
+              borderRadius: '4px'
             }}
           >
             {session.transactionInProgress ? 'Processing...' : 'Execute Transaction'}
           </button>
+
           <p style={{ fontSize: '12px', color: '#888', marginTop: '15px' }}>
             {!session.wallet ? '⚠️ Connect wallet to proceed' : '✓ Ready to execute'}
           </p>
@@ -276,15 +301,42 @@ export default function ArcCanvas() {
         {/* Live Streaming Feed */}
         <div style={{ border: '1px solid #333', padding: '30px', borderRadius: '8px' }}>
           <h2>Deterministic Stream</h2>
-          <div style={{ background: '#000', height: '400px', padding: '15px', color: '#0f0', overflowY: 'auto', borderRadius: '4px', fontSize: '12px' }}>
-            {stream.map((line, i) => (
-              <p key={i} style={{ margin: '4px 0', whiteSpace: 'pre-wrap' }}>
-                {'> '}{line}
-              </p>
-            ))}
+          <p style={{ fontSize: '12px', color: '#888', marginBottom: '15px' }}>
+            Real-time event log with timestamps and transaction confirmations.
+          </p>
+          
+          <div style={{ 
+            background: '#000', 
+            height: '400px', 
+            padding: '15px', 
+            color: '#0f0', 
+            overflowY: 'auto', 
+            borderRadius: '4px', 
+            fontSize: '12px',
+            border: '1px solid #222',
+            fontFamily: '"Courier New", monospace'
+          }}>
+            {stream.length === 0 ? (
+              <p style={{ color: '#666' }}>No events yet...</p>
+            ) : (
+              stream.map((line, i) => (
+                <p key={i} style={{ margin: '4px 0', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                  {'> '}{line}
+                </p>
+              ))
+            )}
+          </div>
+
+          <div style={{ marginTop: '15px', fontSize: '11px', color: '#666' }}>
+            <p>Total Events: {stream.length}</p>
           </div>
         </div>
       </section>
+
+      {/* Footer */}
+      <footer style={{ marginTop: '60px', paddingTop: '20px', borderTop: '1px solid #333', textAlign: 'center', fontSize: '12px', color: '#666' }}>
+        <p>ArcCanvas © 2026 | Deterministic Settlement Layer | Powered by Next.js + Wagmi</p>
+      </footer>
     </main>
   )
 }
