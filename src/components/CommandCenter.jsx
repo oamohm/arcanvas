@@ -1,277 +1,377 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-function rand(a,b){return Math.random()*(b-a)+a;}
-function randInt(a,b){return Math.floor(rand(a,b));}
-function useInterval(cb,ms){const r=useRef(cb);useEffect(()=>{r.current=cb;},[cb]);useEffect(()=>{const t=setInterval(()=>r.current(),ms);return()=>clearInterval(t);},[ms]);}
+// ── tiny helpers ──────────────────────────────────────────────────────────────
+function rand(min, max) { return Math.random() * (max - min) + min; }
+function randInt(min, max) { return Math.floor(rand(min, max)); }
 
-const INIT_LOGS=[
-  {id:1,ts:'02:14:03',level:'info', msg:'Settlement batch #4471 confirmed — 12 txns, 0 reverts',chain:'Arc'},
-  {id:2,ts:'02:14:01',level:'ok',  msg:'Multisig 3/5 reached — disbursement released',chain:'Arc'},
-  {id:3,ts:'02:13:58',level:'warn',msg:'Gas spike on ETH L1 — routing via L2 bridge',chain:'ETH'},
-  {id:4,ts:'02:13:44',level:'info',msg:'AI agent #3 re-scored compliance: 97.4 → 98.1',chain:'Arc'},
-  {id:5,ts:'02:13:31',level:'error',msg:'Liquidity rebalance failed — slippage > 0.8%',chain:'ARB'},
-  {id:6,ts:'02:13:22',level:'ok',  msg:'Governance proposal #19 executed on-chain',chain:'Arc'},
-];
-const PROPOSALS=[
-  {id:'GIP-019',title:'Upgrade validator set to v2.3',votes:87,quorum:75,status:'passed',ends:'Passed'},
-  {id:'GIP-020',title:'Increase treasury reserve to 18%',votes:61,quorum:75,status:'active',ends:'6h 22m'},
-  {id:'GIP-021',title:'Enable cross-chain auto-route',votes:43,quorum:75,status:'active',ends:'2d 4h'},
-];
-const CHAINS=[
-  {name:'Arc',   tvl:'12.4M',flow:'+2.1M',apy:'4.2%',c:'#00e5ff',ok:true},
-  {name:'ETH',   tvl:'8.9M', flow:'+0.6M',apy:'3.1%',c:'#a259ff',ok:false},
-  {name:'ARB',   tvl:'5.3M', flow:'+1.8M',apy:'5.7%',c:'#00c896',ok:true},
-  {name:'OP',    tvl:'3.1M', flow:'-0.2M',apy:'4.9%',c:'#f59e0b',ok:true},
-];
-const AGENTS=[
-  {id:'AGT-01',name:'Compliance Monitor', status:'active',tasks:14,uptime:'99.8%'},
-  {id:'AGT-02',name:'Settlement Router',  status:'active',tasks:31,uptime:'100%'},
-  {id:'AGT-03',name:'Liquidity Optimizer',status:'paused',tasks:7, uptime:'97.2%'},
-  {id:'AGT-04',name:'Audit Aggregator',   status:'active',tasks:9, uptime:'99.1%'},
+const AGENTS = [
+  { id: 'AGT-01', name: 'Compliance Monitor',  status: 'active', tasks: 14, uptime: '99.8%', last: '2s' },
+  { id: 'AGT-02', name: 'Settlement Router',   status: 'active', tasks: 31, uptime: '100%',  last: '0s' },
+  { id: 'AGT-03', name: 'Liquidity Optimizer', status: 'paused', tasks: 7,  uptime: '97.2%', last: '4m' },
+  { id: 'AGT-04', name: 'Audit Aggregator',    status: 'active', tasks: 9,  uptime: '99.1%', last: '18s' },
 ];
 
-function Pill({color,label}){
-  const map={ok:'text-green-400 border-green-400/30 bg-green-400/10',warn:'text-yellow-400 border-yellow-400/30 bg-yellow-400/10',error:'text-red-400 border-red-400/30 bg-red-400/10',info:'text-sky-400 border-sky-400/30 bg-sky-400/10'};
-  return <span className={`text-[9px] font-mono px-1.5 py-px rounded border ${map[color]||map.info}`}>{label}</span>;
+const PROPOSALS = [
+  { id: 'GIP-019', title: 'Upgrade validator set to v2.3',     votes: 87, q: 75, status: 'passed', ends: 'Passed' },
+  { id: 'GIP-020', title: 'Increase treasury reserve to 18%',  votes: 61, q: 75, status: 'active', ends: '6h 22m' },
+  { id: 'GIP-021', title: 'Enable cross-chain USDC auto-route',votes: 43, q: 75, status: 'active', ends: '2d 4h' },
+  { id: 'GIP-022', title: 'Onboard Fireblocks MPC integration', votes: 12, q: 75, status: 'pending',ends: '4d 0h' },
+];
+
+const MSIG = [
+  { id: 'TX-8841', desc: 'Treasury → Counterparty A',  amount: '240,000 USDC', sigs: 3, req: 5, age: '4m' },
+  { id: 'TX-8842', desc: 'Liquidity inject — Pool #7', amount: '80,000 USDC',  sigs: 1, req: 5, age: '11m' },
+  { id: 'TX-8843', desc: 'Protocol fee distribution',  amount: '18,400 USDC',  sigs: 5, req: 5, age: '2m' },
+];
+
+const AUDIT_RULES = [
+  { rule: 'KYC/AML screen',    result: 'pass', detail: '4 entities cleared',    ts: '02:14:01' },
+  { rule: 'Sanctions check',   result: 'pass', detail: 'OFAC — no matches',     ts: '02:13:58' },
+  { rule: 'Velocity limit',    result: 'pass', detail: 'within 50K/hr band',    ts: '02:13:44' },
+  { rule: 'Settlement cap',    result: 'warn', detail: '89% of daily limit',    ts: '02:13:22' },
+  { rule: 'Counterparty risk', result: 'pass', detail: 'score: 96.2 / 100',     ts: '02:13:09' },
+];
+
+// ── Section header ────────────────────────────────────────────────────────────
+function SH({ title, badge, right }) {
+  return (
+    <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center gap-2">
+        <span className="w-1.5 h-1.5 rounded-full bg-cyan pulse-dot shrink-0" />
+        <span className="text-[10px] text-zinc-400 uppercase tracking-widest font-mono">{title}</span>
+        {badge && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-zinc-800 text-zinc-500 font-mono">{badge}</span>}
+      </div>
+      {right && <span className="text-[10px] text-zinc-600 font-mono">{right}</span>}
+    </div>
+  );
 }
 
-function Sparkline({data,color='#00e5ff',h=32,w=100}){
-  if(!data||data.length<2)return null;
-  const mn=Math.min(...data),mx=Math.max(...data),r=mx-mn||1;
-  const pts=data.map((v,i)=>`${(i/(data.length-1))*w},${h-((v-mn)/r)*h}`).join(' ');
-  const area=`0,${h} ${pts} ${w},${h}`;
-  return(
-    <svg width={w} height={h} style={{overflow:'visible'}}>
-      <defs><linearGradient id={`g${color.replace('#','')}`} x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor={color} stopOpacity="0.2"/><stop offset="100%" stopColor={color} stopOpacity="0"/>
-      </linearGradient></defs>
-      <polygon points={area} fill={`url(#g${color.replace('#','')})`}/>
-      <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-      <circle cx={w} cy={h-((data[data.length-1]-mn)/r)*h} r="2.5" fill={color}/>
+// ── Bar chart ─────────────────────────────────────────────────────────────────
+function BarChart({ data = [], color = '#00e5ff', h = 48, w = 200 }) {
+  if (!data.length) return null;
+  const max = Math.max(...data, 1);
+  const bw = Math.floor(w / data.length) - 2;
+  return (
+    <svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none">
+      {data.map((v, i) => {
+        const bh = (v / max) * h;
+        return (
+          <rect key={i} x={i * (bw + 2)} y={h - bh} width={bw} height={bh} rx="2"
+            fill={color} opacity={i === data.length - 1 ? 1 : 0.4} />
+        );
+      })}
     </svg>
   );
 }
 
-export default function CommandCenter(){
+// ── Pipeline SVG ──────────────────────────────────────────────────────────────
+function Pipeline({ tick }) {
+  const nodes = [
+    { label: 'INIT',    sub: 'intake',   x: 50,  y: 65, ok: true  },
+    { label: 'VERIFY',  sub: 'KYC',      x: 140, y: 35, ok: true  },
+    { label: 'ROUTE',   sub: 'AI',       x: 230, y: 65, ok: false },
+    { label: 'SETTLE',  sub: 'USDC',     x: 320, y: 35, ok: true  },
+    { label: 'AUDIT',   sub: 'log',      x: 410, y: 65, ok: true  },
+    { label: 'CONFIRM', sub: 'on-chain', x: 500, y: 35, ok: true  },
+  ];
+  const edges = [[0,1],[1,2],[2,3],[3,4],[4,5]];
+  const active = tick % nodes.length;
+  return (
+    <svg width="100%" viewBox="0 0 560 100" style={{ overflow: 'visible' }}>
+      {edges.map(([a, b], i) => {
+        const na = nodes[a], nb = nodes[b];
+        const isAct = i === active || i === active - 1;
+        return (
+          <line key={i}
+            x1={na.x + 16} y1={na.y} x2={nb.x - 16} y2={nb.y}
+            stroke={isAct ? '#00e5ff' : '#1a2540'} strokeWidth={isAct ? 1.5 : 1}
+            strokeDasharray={isAct ? 'none' : '3,3'} opacity={isAct ? 1 : 0.5}
+          />
+        );
+      })}
+      {nodes.map((n, i) => {
+        const isAct = i === active;
+        const c = n.ok ? '#00c896' : '#00e5ff';
+        return (
+          <g key={i}>
+            {isAct && (
+              <circle cx={n.x} cy={n.y} r="22" fill="none" stroke={c} strokeWidth="1" opacity="0.3">
+                <animate attributeName="r" values="18;26;18" dur="2s" repeatCount="indefinite" />
+                <animate attributeName="opacity" values="0.4;0;0.4" dur="2s" repeatCount="indefinite" />
+              </circle>
+            )}
+            <circle cx={n.x} cy={n.y} r={isAct ? 18 : 15} fill="#0d1422" stroke={c}
+              strokeWidth={isAct ? 2 : 1} opacity={isAct ? 1 : 0.7} />
+            <text x={n.x} y={n.y - 1} textAnchor="middle" fill={c}
+              fontSize="7.5" fontWeight="600" fontFamily="monospace">{n.label}</text>
+            <text x={n.x} y={n.y + 8} textAnchor="middle" fill="#4a5a7a"
+              fontSize="6.5" fontFamily="monospace">{n.sub}</text>
+          </g>
+        );
+      })}
+      <text x="280" y="96" textAnchor="middle" fill="#00e5ff" fontSize="7.5" fontFamily="monospace" opacity="0.7">
+        ↑ {(84000 + tick * 37).toLocaleString()} USDC in flight
+      </text>
+    </svg>
+  );
+}
+
+// ── Log badge ─────────────────────────────────────────────────────────────────
+function LvlBadge({ level }) {
+  const map = { ok: ['#00c896','OK'], warn: ['#f59e0b','WARN'], error: ['#ff4466','ERR'], info: ['#00e5ff','INFO'] };
+  const [c, t] = map[level] || ['#4a5a7a','LOG'];
+  return (
+    <span style={{ border: `1px solid ${c}`, color: c }}
+      className="text-[9px] px-1.5 py-0.5 rounded font-mono shrink-0">{t}</span>
+  );
+}
+
+// ── Main CommandCenter ────────────────────────────────────────────────────────
+export default function CommandCenter({ tick, velData, usdcFlow, txps, treasury, logs }) {
   const { t } = useTranslation('common');
-  const [tick,setTick]=useState(0);
-  const [logs,setLogs]=useState(INIT_LOGS);
-  const [vel,setVel]=useState(()=>Array.from({length:24},()=>randInt(20,90)));
-  const [txps,setTxps]=useState(14);
-  const [treasury,setTreasury]=useState(4_820_400);
-  const [filter,setFilter]=useState('all');
+  const [logFilter, setLogFilter]   = useState('all');
+  const [activeGov,  setActiveGov]  = useState(null);
 
-  useInterval(()=>{
-    setTick(t=>t+1);
-    setVel(d=>[...d.slice(1),randInt(10,100)]);
-    setTxps(randInt(8,28));
-    setTreasury(v=>v+randInt(-200,800));
-    if(Math.random()>0.6){
-      const pool=[
-        {level:'info', msg:`Batch #${4472+randInt(0,20)} finalized — ${randInt(8,24)} txns`,chain:'Arc'},
-        {level:'ok',   msg:`AI re-scored compliance: ${(96+rand(0,3)).toFixed(1)}%`,chain:'Arc'},
-        {level:'warn', msg:'Mempool congestion on ETH — rerouting',chain:'ETH'},
-        {level:'error',msg:'Agent AGT-03 heartbeat timeout — restarting',chain:'Arc'},
-      ];
-      const e=pool[randInt(0,pool.length)];
-      const now=new Date();
-      const ts=`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
-      setLogs(l=>[{id:Date.now(),ts,...e},...l].slice(0,40));
-    }
-  },1800);
+  const usdcM = (treasury / 1_000_000).toFixed(2);
+  const filteredLogs = logFilter === 'all' ? logs : logs.filter(l => l.level === logFilter);
 
-  const visLogs=filter==='all'?logs:logs.filter(l=>l.level===filter);
-  const usdcM=(treasury/1e6).toFixed(2);
+  return (
+    <div className="flex flex-col gap-4">
 
-  return(
-    <div className="bg-arc-bg min-h-screen p-4 sm:p-6 flex flex-col gap-4">
-      {/* Stat row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {[
-          {label:'USDC Treasury',value:`$${usdcM}M`,sub:'reserve',color:'#00e5ff',data:Array.from({length:12},(_,i)=>4.8+Math.sin(i*0.7)*0.3)},
-          {label:'TX Velocity',  value:`${txps}/s`, sub:'rolling 60s',color:'#a259ff',data:vel.slice(-12)},
-          {label:'Cross-chain TVL',value:'$29.7M', sub:'4 chains',color:'#00c896',data:Array.from({length:12},(_,i)=>27+i*0.1+rand(-0.3,0.3))},
-          {label:'Compliance',   value:'98.1',      sub:'AI-scored',color:'#00c896',data:Array.from({length:12},()=>94+rand(0,5))},
-        ].map(s=>(
-          <div key={s.label} className="rounded-xl border border-arc-border bg-arc-surface p-3 flex flex-col gap-2">
-            <div className="text-[9px] text-slate-600 uppercase tracking-widest font-mono">{s.label}</div>
-            <div className="flex items-end justify-between">
-              <div>
-                <div className="text-xl font-bold text-white font-mono">{s.value}</div>
-                <div className="text-[10px] text-slate-600">{s.sub}</div>
-              </div>
-              <Sparkline data={s.data} color={s.color} h={28} w={72}/>
+      {/* ── ROW 1: Pipeline ─────────────────────────────────────────── */}
+      <div className="bg-surface border border-border rounded-xl p-4">
+        <SH title={t('pipeline')} badge="LIVE" right={`batch #${4471 + (tick % 10)}`} />
+        <Pipeline tick={tick} />
+        <div className="grid grid-cols-3 gap-2 mt-3">
+          {[
+            { label: 'avg latency', val: `${(1.2 + rand(-0.2, 0.4)).toFixed(2)}s` },
+            { label: 'revert rate', val: '0.00%' },
+            { label: 'in queue',    val: `${randInt(3, 12)} txns` },
+          ].map(m => (
+            <div key={m.label} className="text-center bg-bg rounded-lg py-2">
+              <div className="text-sm font-mono font-bold text-cyan">{m.val}</div>
+              <div className="text-[9px] text-zinc-600 mt-0.5">{m.label}</div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
-      {/* Main grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Left: chains + agents */}
-        <div className="flex flex-col gap-4">
-          <div className="rounded-xl border border-arc-border bg-arc-surface p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="w-1.5 h-1.5 rounded-full bg-arc-cyan shadow-[0_0_6px_#00e5ff]"/>
-              <span className="text-[10px] font-mono text-slate-400 uppercase tracking-widest">Cross-Chain Liquidity</span>
-            </div>
-            <div className="flex flex-col gap-2">
-              {CHAINS.map(c=>(
-                <div key={c.name} className="flex items-center gap-3 p-2 rounded-lg bg-arc-bg border border-arc-border">
-                  <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{background:c.c}}/>
-                  <span className="text-xs font-mono text-white w-8">{c.name}</span>
-                  <div className="flex-1">
-                    <div className="text-xs font-mono text-slate-200">${c.tvl}</div>
-                    <div className={`text-[9px] font-mono ${c.flow.startsWith('+')?'text-arc-green':'text-arc-danger'}`}>{c.flow}</div>
-                  </div>
-                  <span className="text-[9px] font-mono text-arc-green">{c.apy}</span>
-                  <Pill color={c.ok?'ok':'warn'} label={c.ok?'ok':'warn'}/>
+      {/* ── ROW 2: Treasury + Velocity ──────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+        {/* treasury */}
+        <div className="bg-surface border border-border rounded-xl p-4">
+          <SH title={t('treasury')} right={`$${usdcM}M`} />
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            {[
+              { label: 'Operational',  pct: 62, color: '#00e5ff', val: `$${(treasury * 0.62 / 1e6).toFixed(2)}M` },
+              { label: 'Yield Alloc.', pct: 23, color: '#a259ff', val: `$${(treasury * 0.23 / 1e6).toFixed(2)}M` },
+              { label: 'Bridge Buffer',pct: 10, color: '#00c896', val: `$${(treasury * 0.10 / 1e6).toFixed(2)}M` },
+              { label: 'Emergency',    pct: 5,  color: '#f59e0b', val: `$${(treasury * 0.05 / 1e6).toFixed(2)}M` },
+            ].map(r => (
+              <div key={r.label}>
+                <div className="flex justify-between text-[10px] text-zinc-500 mb-1">
+                  <span>{r.label}</span>
+                  <span className="font-mono text-zinc-300">{r.val}</span>
                 </div>
-              ))}
-            </div>
-          </div>
-          <div className="rounded-xl border border-arc-border bg-arc-surface p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="w-1.5 h-1.5 rounded-full bg-arc-purple shadow-[0_0_6px_#a259ff]"/>
-              <span className="text-[10px] font-mono text-slate-400 uppercase tracking-widest">AI Agents</span>
-            </div>
-            <div className="flex flex-col gap-2">
-              {AGENTS.map(a=>(
-                <div key={a.id} className={`p-2.5 rounded-lg bg-arc-bg border ${a.status==='paused'?'border-yellow-400/20':'border-arc-border'}`}>
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-1.5">
-                      <span className={`w-1.5 h-1.5 rounded-full pulse-dot ${a.status==='active'?'bg-arc-green text-arc-green':'bg-yellow-400 text-yellow-400'}`}/>
-                      <span className="text-xs text-slate-300">{a.name}</span>
-                    </div>
-                    <span className="text-[9px] font-mono text-slate-600">{a.id}</span>
-                  </div>
-                  <div className="flex gap-3 text-[9px] font-mono text-slate-600">
-                    <span>{a.tasks} tasks</span>
-                    <span className="text-arc-green">{a.uptime}</span>
-                  </div>
+                <div className="h-1 bg-zinc-800 rounded overflow-hidden">
+                  <div className="h-full rounded transition-all duration-700"
+                    style={{ width: `${r.pct}%`, background: r.color }} />
                 </div>
-              ))}
-            </div>
+                <div className="text-[9px] text-zinc-600 font-mono mt-0.5">{r.pct}%</div>
+              </div>
+            ))}
           </div>
+          <div className="text-[9px] text-zinc-600 font-mono mb-1">USDC inflow — last 20 batches</div>
+          <BarChart data={usdcFlow.map(v => v / 1000)} color="#00e5ff" h={40} w={300} />
         </div>
 
-        {/* Center: tx velocity + compliance */}
-        <div className="flex flex-col gap-4">
-          <div className="rounded-xl border border-arc-border bg-arc-surface p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="w-1.5 h-1.5 rounded-full bg-arc-purple shadow-[0_0_6px_#a259ff]"/>
-              <span className="text-[10px] font-mono text-slate-400 uppercase tracking-widest">TX Velocity</span>
-            </div>
-            <div className="text-3xl font-bold text-white font-mono mb-1">{txps} <span className="text-sm font-normal text-slate-600">tx/s</span></div>
-            <div className="w-full" style={{height:64}}>
-              <svg width="100%" height="64" viewBox="0 0 240 64" preserveAspectRatio="none">
-                {vel.map((v,i)=>{
-                  const bw=8,bh=(v/100)*60,bx=i*10;
-                  return <rect key={i} x={bx} y={64-bh} width={bw} height={bh} rx="2" fill="#a259ff" opacity={i===vel.length-1?1:0.35}/>;
-                })}
-              </svg>
-            </div>
-            <div className="grid grid-cols-3 gap-2 mt-2 text-center">
-              {[['peak 1h','28/s'],['avg 24h','16/s'],['today',(tick*14+44210).toLocaleString()]].map(([l,v])=>(
-                <div key={l}><div className="text-xs font-mono text-arc-purple font-semibold">{v}</div><div className="text-[9px] text-slate-600">{l}</div></div>
-              ))}
-            </div>
+        {/* velocity */}
+        <div className="bg-surface border border-border rounded-xl p-4">
+          <SH title={t('velocity')} right="last 24 intervals" />
+          <div className="mb-3">
+            <span className="text-2xl font-mono font-bold text-white">{txps}</span>
+            <span className="text-xs text-zinc-500 ml-2">tx / second</span>
           </div>
-
-          {/* compliance ring */}
-          <div className="rounded-xl border border-arc-border bg-arc-surface p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="w-1.5 h-1.5 rounded-full bg-arc-green shadow-[0_0_6px_#00c896]"/>
-              <span className="text-[10px] font-mono text-slate-400 uppercase tracking-widest">Compliance & Audit</span>
-            </div>
-            <div className="flex items-center gap-4 mb-3">
-              <svg width="60" height="60" viewBox="0 0 60 60">
-                <circle cx="30" cy="30" r="24" fill="none" stroke="#1a2540" strokeWidth="5"/>
-                <circle cx="30" cy="30" r="24" fill="none" stroke="#00c896" strokeWidth="5"
-                  strokeDasharray={`${(98.1/100)*150.8} 150.8`} strokeLinecap="round" transform="rotate(-90 30 30)"/>
-                <text x="30" y="34" textAnchor="middle" fill="#00c896" fontSize="11" fontFamily="monospace" fontWeight="700">98.1</text>
-              </svg>
-              <div>
-                <div className="text-sm text-white font-semibold">Compliance Score</div>
-                <div className="text-[10px] text-slate-600 mt-0.5">AI-verified · 2s ago</div>
-                <div className="text-[10px] text-arc-green mt-0.5 font-mono">↑ +0.7 session</div>
-              </div>
-            </div>
+          <BarChart data={velData} color="#a259ff" h={60} w={300} />
+          <div className="grid grid-cols-3 gap-2 mt-3">
             {[
-              {rule:'KYC/AML screen',result:'pass',detail:'4 entities cleared'},
-              {rule:'Sanctions check', result:'pass',detail:'OFAC — no matches'},
-              {rule:'Velocity limit',  result:'pass',detail:'within 50K/hr'},
-              {rule:'Settlement cap',  result:'warn',detail:'89% of daily limit'},
-            ].map(r=>(
-              <div key={r.rule} className="flex items-center gap-2 py-1.5 border-b border-arc-border last:border-0 text-xs">
-                <Pill color={r.result==='pass'?'ok':'warn'} label={r.result}/>
-                <span className="flex-1 text-slate-400">{r.rule}</span>
-                <span className="text-[9px] text-slate-600 font-mono">{r.detail}</span>
+              { label: 'peak 1h',    val: '28 tx/s' },
+              { label: 'avg 24h',    val: '16 tx/s' },
+              { label: 'total today',val: `${(tick * 14 + 44210).toLocaleString()}` },
+            ].map(m => (
+              <div key={m.label} className="text-center">
+                <div className="text-sm font-mono font-bold text-purple">{m.val}</div>
+                <div className="text-[9px] text-zinc-600 mt-0.5">{m.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── ROW 3: Agents + Multisig ────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+        {/* agents */}
+        <div className="bg-surface border border-border rounded-xl p-4">
+          <SH title={t('agents')} badge="agentic" />
+          <div className="flex flex-col gap-2">
+            {AGENTS.map(a => (
+              <div key={a.id} className={`p-3 bg-bg rounded-lg border ${
+                a.status === 'paused' ? 'border-warn/20' : 'border-border'
+              }`}>
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${
+                      a.status === 'active' ? 'bg-green pulse-dot' : 'bg-warn'
+                    }`} />
+                    <span className="text-xs font-medium text-zinc-200">{a.name}</span>
+                  </div>
+                  <span className="text-[9px] text-zinc-500 font-mono">{a.id}</span>
+                </div>
+                <div className="grid grid-cols-3 gap-1 text-[10px] font-mono">
+                  <span className="text-zinc-500">{a.tasks} tasks</span>
+                  <span className="text-green text-center">{a.uptime}</span>
+                  <span className="text-zinc-500 text-right">{a.last} ago</span>
+                </div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Right: log + governance */}
-        <div className="flex flex-col gap-4">
-          <div className="rounded-xl border border-arc-border bg-arc-surface p-4 flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-arc-cyan shadow-[0_0_6px_#00e5ff]"/>
-                <span className="text-[10px] font-mono text-slate-400 uppercase tracking-widest">Live Event Log</span>
-                <span className="text-[9px] font-mono px-1.5 py-px rounded bg-arc-border text-slate-600">{logs.length}</span>
-              </div>
-              <select value={filter} onChange={e=>setFilter(e.target.value)}
-                className="bg-arc-bg border border-arc-border text-slate-600 text-[9px] rounded px-1.5 py-0.5 font-mono focus:outline-none">
-                {['all','ok','info','warn','error'].map(f=><option key={f} value={f}>{f}</option>)}
-              </select>
-            </div>
-            <div className="max-h-52 overflow-y-auto flex flex-col gap-1.5">
-              {visLogs.map(l=>(
-                <div key={l.id} className={`p-2 rounded-lg border text-[10px] slide-in ${l.level==='error'?'border-arc-danger/20 bg-arc-danger/5':l.level==='warn'?'border-yellow-400/20 bg-yellow-400/5':'border-arc-border bg-arc-bg'}`}>
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <Pill color={l.level} label={l.level.toUpperCase()}/>
-                    <span className="font-mono text-slate-600">{l.ts}</span>
-                    <span className="font-mono text-slate-700 ml-auto">{l.chain}</span>
-                  </div>
-                  <div className={`leading-snug ${l.level==='error'?'text-red-400':l.level==='warn'?'text-yellow-400':'text-slate-400'}`}>{l.msg}</div>
+        {/* multisig */}
+        <div className="bg-surface border border-border rounded-xl p-4">
+          <SH title={t('multisig')} badge={`${MSIG.length} pending`} />
+          <div className="flex flex-col gap-2">
+            {MSIG.map(tx => (
+              <div key={tx.id} className="p-3 bg-bg rounded-lg border border-border">
+                <div className="flex justify-between mb-1">
+                  <span className="text-[9px] text-purple font-mono">{tx.id}</span>
+                  <span className="text-[9px] text-zinc-600 font-mono">{tx.age} ago</span>
                 </div>
-              ))}
-            </div>
+                <div className="text-[11px] text-zinc-400 mb-2">{tx.desc}</div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-cyan font-mono font-bold">{tx.amount}</span>
+                  <div className="flex items-center gap-1.5">
+                    {Array.from({ length: tx.req }).map((_, i) => (
+                      <span key={i} className={`w-2 h-2 rounded-full border ${
+                        i < tx.sigs ? 'bg-green border-green/50' : 'bg-transparent border-zinc-700'
+                      }`} />
+                    ))}
+                  </div>
+                </div>
+                {tx.sigs === tx.req && (
+                  <button className="mt-2 w-full py-1 rounded bg-green/10 border border-green/30 text-green text-[10px] font-mono hover:bg-green/20 transition">
+                    {t('execute')} →
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── ROW 4: Governance + Compliance ──────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+        {/* governance */}
+        <div className="bg-surface border border-border rounded-xl p-4">
+          <SH title={t('governance')} badge="on-chain" />
+          <div className="flex flex-col gap-2">
+            {PROPOSALS.map(p => (
+              <div key={p.id}
+                onClick={() => setActiveGov(activeGov === p.id ? null : p.id)}
+                className={`p-3 bg-bg rounded-lg border cursor-pointer transition-colors ${
+                  activeGov === p.id ? 'border-purple/40' : 'border-border hover:border-zinc-700'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[9px] text-purple font-mono">{p.id}</span>
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded border font-mono ${
+                    p.status === 'passed'  ? 'text-green border-green/30 bg-green/10'   :
+                    p.status === 'active'  ? 'text-cyan border-cyan/30 bg-cyan/10'      :
+                                             'text-zinc-500 border-zinc-700 bg-transparent'
+                  }`}>{p.status}</span>
+                </div>
+                <div className="text-[11px] text-zinc-400 mb-2">{p.title}</div>
+                <div className="h-1 bg-zinc-800 rounded overflow-hidden mb-1">
+                  <div className="h-full rounded transition-all"
+                    style={{ width: `${Math.min(p.votes, 100)}%`, background: p.votes >= p.q ? '#00c896' : '#a259ff' }} />
+                </div>
+                <div className="flex justify-between text-[9px] text-zinc-600 font-mono">
+                  <span>{p.votes}% voted · quorum {p.q}%</span>
+                  <span>{p.ends}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* compliance */}
+        <div className="bg-surface border border-border rounded-xl p-4">
+          <SH title={t('compliance')} badge="automated" />
+          <div className="flex flex-col gap-2">
+            {AUDIT_RULES.map((r, i) => (
+              <div key={i} className="flex items-center gap-2 p-2.5 bg-bg rounded-lg border border-border text-xs">
+                <span className={`shrink-0 text-[9px] px-1.5 py-0.5 rounded border font-mono ${
+                  r.result === 'pass' ? 'text-green border-green/30 bg-green/10' : 'text-warn border-warn/30 bg-warn/10'
+                }`}>{r.result}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-zinc-300 truncate">{r.rule}</div>
+                  <div className="text-[10px] text-zinc-500 truncate">{r.detail}</div>
+                </div>
+                <span className="text-[9px] text-zinc-600 font-mono shrink-0">{r.ts}</span>
+              </div>
+            ))}
           </div>
 
-          <div className="rounded-xl border border-arc-border bg-arc-surface p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="w-1.5 h-1.5 rounded-full bg-arc-purple shadow-[0_0_6px_#a259ff]"/>
-              <span className="text-[10px] font-mono text-slate-400 uppercase tracking-widest">Governance</span>
-            </div>
-            <div className="flex flex-col gap-2">
-              {PROPOSALS.map(p=>(
-                <div key={p.id} className="p-2.5 rounded-lg bg-arc-bg border border-arc-border">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[9px] font-mono text-arc-purple">{p.id}</span>
-                    <Pill color={p.status==='passed'?'ok':p.status==='active'?'info':'warn'} label={p.status}/>
-                  </div>
-                  <div className="text-[10px] text-slate-400 mb-2 leading-snug">{p.title}</div>
-                  <div className="h-1 bg-arc-border rounded-full overflow-hidden mb-1">
-                    <div className="h-full rounded-full transition-all duration-700" style={{width:`${Math.min(p.votes,100)}%`,background:p.votes>=p.quorum?'#00c896':'#a259ff'}}/>
-                  </div>
-                  <div className="flex justify-between text-[9px] font-mono text-slate-600">
-                    <span>{p.votes}% voted</span><span>{p.ends}</span>
-                  </div>
-                </div>
-              ))}
+          {/* score ring */}
+          <div className="mt-3 flex items-center gap-3 p-3 bg-bg rounded-lg border border-border">
+            <svg width="44" height="44" viewBox="0 0 44 44">
+              <circle cx="22" cy="22" r="18" fill="none" stroke="#1a2540" strokeWidth="4" />
+              <circle cx="22" cy="22" r="18" fill="none" stroke="#00c896" strokeWidth="4"
+                strokeDasharray={`${(98.1 / 100) * 113.1} 113.1`} strokeLinecap="round"
+                transform="rotate(-90 22 22)" />
+              <text x="22" y="26" textAnchor="middle" fill="#00c896" fontSize="9" fontFamily="monospace" fontWeight="700">98.1</text>
+            </svg>
+            <div>
+              <div className="text-xs text-zinc-300 font-medium">{t('compliance')} {t('score')}</div>
+              <div className="text-[10px] text-zinc-600 mt-0.5">AI-verified · updated 2s ago</div>
+              <div className="text-[10px] text-green font-mono mt-0.5">↑ +0.7 this session</div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="border-t border-arc-border pt-3 flex items-center justify-between text-[9px] font-mono text-slate-700">
-        <span>arcanvas v1.0.0 · arc testnet</span>
-        <span>block #{(18_440_000+tick*3).toLocaleString()} · {new Date().toISOString().slice(11,19)} UTC</span>
+      {/* ── ROW 5: Event Log ────────────────────────────────────────── */}
+      <div className="bg-surface border border-border rounded-xl p-4">
+        <SH title={t('logs')} badge={`${logs.length}`}
+          right={
+            <select value={logFilter} onChange={e => setLogFilter(e.target.value)}
+              className="bg-bg border border-border text-zinc-500 text-[9px] rounded px-1.5 py-0.5 font-mono">
+              {['all','ok','info','warn','error'].map(f => <option key={f} value={f}>{f}</option>)}
+            </select>
+          }
+        />
+        <div className="max-h-52 overflow-y-auto flex flex-col gap-2">
+          {filteredLogs.slice(0, 20).map(l => (
+            <div key={l.id} className={`slide-in p-2.5 bg-bg rounded-lg border text-xs flex flex-col gap-1 ${
+              l.level === 'error' ? 'border-danger/20' : l.level === 'warn' ? 'border-warn/20' : 'border-border'
+            }`}>
+              <div className="flex items-center gap-2">
+                <LvlBadge level={l.level} />
+                <span className="text-[9px] text-zinc-600 font-mono">{l.ts}</span>
+                <span className="text-[9px] text-zinc-600 font-mono ml-auto">{l.chain}</span>
+              </div>
+              <div className={`leading-snug ${
+                l.level === 'error' ? 'text-red-300' : l.level === 'warn' ? 'text-yellow-300' : 'text-zinc-400'
+              }`}>{l.msg}</div>
+            </div>
+          ))}
+        </div>
       </div>
+
     </div>
   );
 }
