@@ -2,7 +2,7 @@ import '../styles/globals.css';
 import '@rainbow-me/rainbowkit/styles.css';
 import { RainbowKitProvider } from '@rainbow-me/rainbowkit';
 import { WagmiConfig } from 'wagmi';
-import { wagmiConfig, chains } from '../lib/wagmi'; // हमने जो wagmi.js बनाई थी
+import { wagmiConfig, chains } from '../lib/wagmi';
 
 function MyApp({ Component, pageProps }) {
   return (
