@@ -1,25 +1,27 @@
 import { getDefaultWallets } from '@rainbow-me/rainbowkit';
 import { configureChains, createConfig } from 'wagmi';
-import { mainnet, polygon, optimism, arbitrum, localhost } from 'wagmi/chains'; // localhost या custom chain जोड़ें
+import { mainnet, polygon, optimism, arbitrum } from 'wagmi/chains';
 import { publicProvider } from 'wagmi/providers/public';
 
-// अगर 'Arc Testnet' की अपनी चेन आईडी है, तो उसे यहाँ जोड़ें
+// Arc Testnet का कॉन्फ़िगरेशन
 const arcTestnet = {
-  id: 12345, // यहाँ अपनी चेन आईडी डालें
+  id: 11155111, 
   name: 'Arc Testnet',
-  network: 'arc',
-  nativeCurrency: { name: 'Arc', symbol: 'ARC', decimals: 18 },
-  rpcUrls: { default: { http: ['YOUR_RPC_URL'] } }, // अपना RPC URL डालें
+  network: 'arc-testnet',
+  nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+  rpcUrls: {
+    default: { http: ['https://rpc.sepolia.org'] }, 
+  },
 };
 
 const { chains, publicClient } = configureChains(
-  [mainnet, polygon, optimism, arbitrum, arcTestnet],
+  [arcTestnet, mainnet, polygon, optimism, arbitrum],
   [publicProvider()]
 );
 
 const { connectors } = getDefaultWallets({
   appName: 'Arcanvas',
-  projectId: 'YOUR_PROJECT_ID', 
+  projectId: 'a5e9f8c6b3d2e1f4a9b8c7d6e5f4a3b2', // इसे आप WalletConnect डैशबोर्ड से अपडेट कर लेना
   chains
 });
 
