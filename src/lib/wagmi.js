@@ -3,7 +3,7 @@ import { configureChains, createConfig } from 'wagmi';
 import { mainnet, polygon, optimism, arbitrum } from 'wagmi/chains';
 import { publicProvider } from 'wagmi/providers/public';
 
-// Arc Testnet कॉन्फ़िगरेशन
+// हमने Arc Testnet को यहाँ सीधे परिभाषित किया है
 const arcTestnet = {
   id: 11155111,
   name: 'Arc Testnet',
@@ -11,6 +11,7 @@ const arcTestnet = {
   nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
   rpcUrls: {
     default: { http: ['https://rpc.sepolia.org'] },
+    public: { http: ['https://rpc.sepolia.org'] },
   },
 };
 
@@ -31,10 +32,13 @@ export const wagmiConfig = createConfig({
   publicClient
 });
 
-// बैलेंस फॉर्मेटिंग फंक्शन (इसे आप अपने कॉम्पोनेंट में इम्पोर्ट कर सकते हैं)
 export const formatBalance = (balance) => {
   if (!balance) return "0.00";
-  return Number(balance / 10n**18n).toFixed(2);
+  try {
+    return Number(BigInt(balance) / 10n**18n).toFixed(2);
+  } catch (e) {
+    return "0.00";
+  }
 };
 
 export { chains };
