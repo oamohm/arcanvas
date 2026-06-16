@@ -1,22 +1,18 @@
 import { getDefaultWallets } from '@rainbow-me/rainbowkit';
 import { configureChains, createConfig } from 'wagmi';
-import { mainnet, polygon, optimism, arbitrum } from 'wagmi/chains';
+import { mainnet, polygon } from 'wagmi/chains';
 import { publicProvider } from 'wagmi/providers/public';
 
-// हमने Arc Testnet को यहाँ सीधे परिभाषित किया है
 const arcTestnet = {
   id: 11155111,
   name: 'Arc Testnet',
   network: 'arc-testnet',
   nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-  rpcUrls: {
-    default: { http: ['https://rpc.sepolia.org'] },
-    public: { http: ['https://rpc.sepolia.org'] },
-  },
+  rpcUrls: { default: { http: ['https://rpc.sepolia.org'] } },
 };
 
-const { chains, publicClient } = configureChains(
-  [arcTestnet, mainnet, polygon, optimism, arbitrum],
+const { chains, publicClient, webSocketPublicClient } = configureChains(
+  [arcTestnet, mainnet, polygon],
   [publicProvider()]
 );
 
@@ -29,16 +25,8 @@ const { connectors } = getDefaultWallets({
 export const wagmiConfig = createConfig({
   autoConnect: true,
   connectors,
-  publicClient
+  publicClient,
+  webSocketPublicClient
 });
-
-export const formatBalance = (balance) => {
-  if (!balance) return "0.00";
-  try {
-    return Number(BigInt(balance) / 10n**18n).toFixed(2);
-  } catch (e) {
-    return "0.00";
-  }
-};
 
 export { chains };
