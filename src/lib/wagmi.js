@@ -10,7 +10,7 @@ const arcTestnet = {
   network: 'arc-testnet',
   nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
   rpcUrls: {
-    default: { http: ['https://rpc.sepolia.org'] }, 
+    default: { http: ['https://rpc.sepolia.org'] },
   },
 };
 
@@ -21,7 +21,7 @@ const { chains, publicClient } = configureChains(
 
 const { connectors } = getDefaultWallets({
   appName: 'Arcanvas',
-  projectId: 'a5e9f8c6b3d2e1f4a9b8c7d6e5f4a3b2', // इसे आप WalletConnect डैशबोर्ड से अपडेट कर लेना
+  projectId: 'a5e9f8c6b3d2e1f4a9b8c7d6e5f4a3b2', 
   chains
 });
 
