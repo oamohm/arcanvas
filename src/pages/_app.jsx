@@ -1,11 +1,17 @@
 import '../styles/globals.css';
-import { I18nextProvider } from 'react-i18next';
-import i18n from '../lib/i18n';
+import '@rainbow-me/rainbowkit/styles.css';
+import { RainbowKitProvider } from '@rainbow-me/rainbowkit';
+import { WagmiConfig } from 'wagmi';
+import { wagmiConfig, chains } from '../lib/wagmi'; // हमने जो wagmi.js बनाई थी
 
-export default function App({ Component, pageProps }) {
+function MyApp({ Component, pageProps }) {
   return (
-    <I18nextProvider i18n={i18n}>
-      <Component {...pageProps} />
-    </I18nextProvider>
+    <WagmiConfig config={wagmiConfig}>
+      <RainbowKitProvider chains={chains}>
+        <Component {...pageProps} />
+      </RainbowKitProvider>
+    </WagmiConfig>
   );
 }
+
+export default MyApp;
