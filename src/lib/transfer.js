@@ -12,9 +12,7 @@ export async function fetchBalances(provider, address) {
         ]);
         const raw = await token.balanceOf(address);
         usdc = ethers.formatUnits(raw, dec);
-    } catch (e) {
-        // USDC not deployed or fetch failed
-    }
+    } catch (e) { /* USDC fetch failed */ }
     return { eth: ethers.formatEther(ethBal), usdc };
 }
 
