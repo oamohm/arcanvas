@@ -6,26 +6,11 @@ export async function fetchBalances(provider, address) {
     let usdc = '0';
     try {
         const token = new ethers.Contract(USDC_ADDRESS, ERC20_ABI, provider);
-        const [dec, symbol] = await Promise.all([
-            token.decimals(),
-            token.symbol()
-        ]);
+        const [dec] = await Promise.all([token.decimals()]);
         const raw = await token.balanceOf(address);
         usdc = ethers.formatUnits(raw, dec);
-    } catch (e) { /* USDC fetch failed */ }
+    } catch (e) { console.error("Balance fetch error:", e); }
     return { eth: ethers.formatEther(ethBal), usdc };
-}
-
-export async function estimateFee(provider, from, to, amount, asset, usdcDecimals = 6) {
-    const feeData = await provider.getFeeData();
-    let gasLimit;
-    if (asset === 'ARC') {
-        gasLimit = await provider.estimateGas({ from, to, value: ethers.parseEther(amount || '0') });
-    } else {
-        const token = new ethers.Contract(USDC_ADDRESS, ERC20_ABI, provider);
-        gasLimit = await token.getFunction('transfer').estimateGas(to, ethers.parseUnits(amount || '0', usdcDecimals));
-    }
-    return { fee: ethers.formatEther(gasLimit * feeData.gasPrice), gasLimit: gasLimit.toString() };
 }
 
 export async function sendArc(signer, to, amount) {
