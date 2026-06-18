@@ -6,7 +6,7 @@ export async function fetchBalances(provider, address) {
     let usdc = '0';
     try {
         const token = new ethers.Contract(USDC_ADDRESS, ERC20_ABI, provider);
-        const [dec] = await Promise.all([token.decimals()]);
+        const dec = await token.decimals();
         const raw = await token.balanceOf(address);
         usdc = ethers.formatUnits(raw, dec);
     } catch (e) { console.error("Balance fetch error:", e); }
