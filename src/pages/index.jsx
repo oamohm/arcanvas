@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useTranslation } from 'react-i18next';
 
-// डायनामिक इंपोर्ट्स (SSR: false के साथ)
+// वॉलेट और इंटरैक्टिव कंपोनेंट्स को डायनामिक बनाया गया है (SSR: false)
 const ConnectButton = dynamic(() => import('@rainbow-me/rainbowkit').then(m => m.ConnectButton), { ssr: false });
 const Sidebar = dynamic(() => import('../components/Sidebar'), { ssr: false });
 const AssetOverview = dynamic(() => import('../components/AssetOverview'), { ssr: false });
@@ -13,9 +13,6 @@ const ArcStreamEngine = dynamic(() => import('../components/ArcStreamEngine'), {
 
 import { useWallet } from '../hooks/useWallet';
 import { useLiveData } from '../hooks/useLiveData';
-import { shortAddr } from '../lib/arc';
-
-const LANGS = ['en', 'hi', 'es', 'zh'];
 
 function NetPill({ label, ok }) {
   return (
@@ -27,7 +24,6 @@ function NetPill({ label, ok }) {
 }
 
 function Header() {
-  const { t } = useTranslation('common');
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-md">
       <div className="flex h-16 items-center justify-between px-6">
@@ -44,7 +40,6 @@ function Header() {
 export default function Home() {
   const [activeView, setActiveView] = useState('overview');
   const wallet = useWallet();
-  const liveData = useLiveData();
 
   return (
     <div className="flex h-screen overflow-hidden bg-background text-zinc-100">
