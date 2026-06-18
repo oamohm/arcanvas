@@ -2,8 +2,9 @@ import Head from 'next/head';
 import React, { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useTranslation } from 'react-i18next';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
 
+// वॉलेट और इंटरैक्टिव कंपोनेंट्स को डायनामिक बनाया गया है (SSR: false)
+const ConnectButton = dynamic(() => import('@rainbow-me/rainbowkit').then(m => m.ConnectButton), { ssr: false });
 const Sidebar = dynamic(() => import('../components/Sidebar'), { ssr: false });
 const AssetOverview = dynamic(() => import('../components/AssetOverview'), { ssr: false });
 const CommandCenter = dynamic(() => import('../components/CommandCenter'), { ssr: false });
