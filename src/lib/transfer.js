@@ -13,6 +13,11 @@ export async function fetchBalances(provider, address) {
     return { eth: ethers.formatEther(ethBal), usdc };
 }
 
+export async function estimateFee(provider, to, amount) {
+    // फीस एस्टिमेशन का बेसिक लॉजिक
+    return ethers.parseEther("0.001");
+}
+
 export async function sendArc(signer, to, amount) {
     const tx = await signer.sendTransaction({ to, value: ethers.parseEther(amount) });
     const receipt = await tx.wait();
